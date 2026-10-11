@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{% endblock %}{% if self.titulo() %} · {% endif %}{{ NOME_CLINICA }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if g.usuario %}
+<header class="topo">
+  <div class="topo-dentro">
+    <a class="marca" href="{{ url_for('hoje') }}">
+      <span class="marca-icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12a4 4 0 0 1 8 0M12 12v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </span>
+      {{ NOME_CLINICA }}
+    </a>
+    {% set ep = request.endpoint or '' %}
+    <nav class="menu">
+      <a href="{{ url_for('hoje') }}" class="{{ 'ativo' if ep == 'hoje' }}">Hoje</a>
+      <a href="{{ url_for('agenda') }}" class="{{ 'ativo' if ep == 'agenda' or ep.startswith('agendamento') }}">Agenda</a>
+      <a href="{{ url_for('solicitacoes') }}" class="{{ 'ativo' if ep.startswith('solicitac') }}">
+        Solicitações{% if solicitacoes_pendentes %} <span class="contador contador-alerta">{{ solicitacoes_pendentes }}</span>{% endif %}
+      </a>
+      <a href="{{ url_for('pacientes') }}" class="{{ 'ativo' if ep.startswith('paciente') or ep.startswith('evolucao') or ep.startswith('prontuario') }}">Pacientes</a>
+      {% if pode_financeiro_geral() %}
+      <a href="{{ url_for('financeiro') }}" class="{{ 'ativo' if ep == 'financeiro' }}">Financeiro</a>
+      <a href="{{ url_for('faturamento') }}" class="{{ 'ativo' if ep == 'faturamento' }}">Convênios</a>
+      {% endif %}
+      {% if g.usuario.atende or g.usuario.papel == 'recepcao' or g.usuario.papel == 'admin' %}
+      <a href="{{ url_for('horarios') }}" class="{{ 'ativo' if ep == 'horarios' }}">Horários</a>
+      {% endif %}
+      {% if g.usuario.papel == 'admin' %}
+      <a href="{{ url_for('usuarios') }}" class="{{ 'ativo' if ep.startswith('usuario') }}">Usuários</a>
+      {% endif %}
+    </nav>
+    <div class="conta">
+      <a href="{{ url_for('trocar_senha') }}" title="Trocar senha">{{ g.usuario.nome.split()[0] }}</a>
+      <form method="post" action="{{ url_for('sair') }}" class="form-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="botao-link" type="submit">Sair</button>
+      </form>
+    </div>
+  </div>
+</header>
+{% else %}
+{% block topo_publico %}{% endblock %}
+{% endif %}
+
+<main class="conteudo {% block classe_main %}{% endblock %}">
+  {% with mensagens = get_flashed_messages(with_categories=true) %}
+    {% if mensagens %}
+    <div class="avisos" role="status">
+      {% for categoria, texto in mensagens %}
+      <p class="aviso aviso-{{ categoria }}">{{ texto }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+  {% block conteudo %}{% endblock %}
+</main>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

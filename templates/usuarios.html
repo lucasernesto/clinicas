@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>Usuários</h1>
+  <div class="cabecalho-acoes">
+    <a class="botao" href="{{ url_for('especialidades_admin') }}">Especialidades</a>
+    <a class="botao" href="{{ url_for('convenios_admin') }}">Planos de saúde</a>
+    <a class="botao botao-primario" href="{{ url_for('usuario_novo') }}">+ Usuário</a>
+  </div>
+</div>
+<div class="cartao sem-padding">
+  <table class="tabela">
+    <thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Especialidades</th><th>Registro</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr class="{{ 'riscado' if not u.ativo }}">
+        <td>{% if u.atende %}<span class="bolinha" style="background: {{ u.cor }}"></span>{% endif %}{{ u.nome }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ PAPEIS[u.papel] }}</td>
+        <td>{% if u.atende %}{{ u.especialidades_txt or '—' }}{% else %}<span class="discreto">não atende</span>{% endif %}</td>
+        <td>{{ u.registro or '' }}</td>
+        <td>{% if not u.ativo %}Inativo{% elif u.trocar_senha %}Aguardando 1º acesso{% else %}Ativo{% endif %}</td>
+        <td><a href="{{ url_for('usuario_editar', usuario_id=u.id) }}">Editar</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="discreto pequeno">
+  Quem <strong>atende</strong> aparece na agenda e tem acesso ao prontuário. A recepção e a administração sem atendimento
+  veem cadastro, agenda e financeiro, mas não os dados clínicos.
+</p>
+{% endblock %}

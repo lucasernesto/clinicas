@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block titulo %}Financeiro{% endblock %}
+{% block conteudo %}
+{% set meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'] %}
+<div class="cabecalho">
+  <div>
+    <h1>Financeiro</h1>
+    <p class="discreto">{{ meses[mes.month - 1] | capitalize }} de {{ mes.year }}</p>
+  </div>
+  <div class="navegacao-semana">
+    <a class="botao" href="{{ url_for('financeiro', mes=anterior) }}" aria-label="Mês anterior">‹</a>
+    <a class="botao" href="{{ url_for('financeiro') }}">Mês atual</a>
+    <a class="botao" href="{{ url_for('financeiro', mes=proximo) }}" aria-label="Próximo mês">›</a>
+  </div>
+</div>
+
+<div class="resumo-numeros">
+  <div><span>Recebido no mês</span><strong>{{ total_recebido | brl }}</strong></div>
+  <div><span>Produzido no mês</span><strong>{{ total_produzido | brl }}</strong></div>
+  <div class="{{ 'negativo' if total_aberto }}"><span>Em aberto (todos os meses)</span><strong>{{ total_aberto | brl }}</strong></div>
+</div>
+<p class="discreto pequeno">
+  Recebido = pagamentos de pacientes lançados no mês (o que os planos pagam fica em <a href="{{ url_for('faturamento', mes=mes.strftime('%Y-%m')) }}">Convênios</a>).
+  Produzido = sessões particulares realizadas{% if COBRAR_FALTA %} e faltas sem justificativa{% endif %} + sessões pelo plano realizadas e não glosadas.
+</p>
+
+<section class="cartao sem-padding">
+  <h2 class="titulo-tabela">Particular e planos</h2>
+  <table class="tabela">
+    <thead><tr><th>Forma</th><th class="num">Realizadas</th><th class="num">Produzido</th><th class="num">A faturar</th><th class="num">Faturado</th><th class="num">Pago</th><th class="num">Glosado</th></tr></thead>
+    <tbody>
+      {% for c in por_cobranca %}
+      <tr>
+        <td>{% if c.convenio_id %}<a href="{{ url_for('faturamento', mes=mes.strftime('%Y-%m'), convenio=c.convenio_id) }}">{{ c.nome }}</a>{% else %}<strong>{{ c.nome }}</strong>{% endif %}</td>
+        <td class="num">{{ c.realizadas }}</td>
+        <td class="num">{{ (c.valor or 0) | brl }}</td>
+        {% if c.convenio_id %}
+        <td class="num">{{ c.a_faturar | brl }}</td>
+        <td class="num">{{ c.faturado | brl }}</td>
+        <td class="num">{{ c.pago | brl }}</td>
+        <td class="num">{{ c.glosado | brl }}</td>
+        {% else %}
+        <td class="num discreto" colspan="4">cobrado do paciente</td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="vazio">Nenhum atendimento no mês.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="colunas-iguais">
+  <section class="cartao sem-padding">
+    <h2 class="titulo-tabela">Recebimentos por forma</h2>
+    <table class="tabela">
+      <thead><tr><th>Forma</th><th class="num">Lançamentos</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        {% for r in recebido %}
+        <tr><td>{{ ROTULO_FORMAS.get(r.forma, r.forma) }}</td><td class="num">{{ r.qtd }}</td><td class="num">{{ r.total | brl }}</td></tr>
+        {% else %}
+        <tr><td colspan="3" class="vazio">Nenhum pagamento no mês.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="cartao sem-padding">
+    <h2 class="titulo-tabela">Atendimentos por profissional</h2>
+    <table class="tabela">
+      <thead><tr><th>Profissional</th><th class="num">Realizadas</th><th class="num">Faltas</th><th class="num">Just.</th><th class="num">Canc.</th><th class="num">Produzido</th></tr></thead>
+      <tbody>
+        {% for p in producao %}
+        <tr>
+          <td><span class="bolinha" style="background: {{ p.cor }}"></span>{{ p.nome }}</td>
+          <td class="num">{{ p.realizadas }}</td>
+          <td class="num">{{ p.faltas }}</td>
+          <td class="num">{{ p.faltas_justificadas }}</td>
+          <td class="num">{{ p.canceladas }}</td>
+          <td class="num">{{ (p.valor or 0) | brl }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="vazio">Nenhum atendimento no mês.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="cartao sem-padding">
+  <h2 class="titulo-tabela">Por especialidade</h2>
+  <table class="tabela">
+    <thead><tr><th>Especialidade</th><th class="num">Realizadas</th><th class="num">Produzido</th></tr></thead>
+    <tbody>
+      {% for e in por_especialidade %}
+      <tr><td>{{ e.nome }}</td><td class="num">{{ e.realizadas }}</td><td class="num">{{ (e.valor or 0) | brl }}</td></tr>
+      {% else %}
+      <tr><td colspan="3" class="vazio">Nenhum atendimento no mês.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="cartao sem-padding">
+  <h2 class="titulo-tabela">Pacientes com valores particulares em aberto</h2>
+  <table class="tabela">
+    <thead><tr><th>Paciente</th><th>Plano no cadastro</th><th class="num">Cobrado</th><th class="num">Pago</th><th class="num">Em aberto</th><th></th></tr></thead>
+    <tbody>
+      {% for d in devedores %}
+      <tr>
+        <td><a href="{{ url_for('paciente', paciente_id=d.id, aba='financeiro') }}">{{ d.nome }}</a></td>
+        <td>{{ d.convenio_nome or 'Particular' }}</td>
+        <td class="num">{{ d.cobrado | brl }}</td>
+        <td class="num">{{ d.pago | brl }}</td>
+        <td class="num"><strong>{{ (d.cobrado - d.pago) | brl }}</strong></td>
+        <td>
+          {% set wpp = link_whatsapp(d.responsavel_telefone or d.telefone) %}
+          {% if wpp %}<a href="{{ wpp }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="vazio">Ninguém com pagamento em aberto.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

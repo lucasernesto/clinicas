@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prontuário · {{ paciente.nome }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="impressao">
+  <div class="nao-imprimir barra-acoes">
+    <button class="botao botao-primario" type="button" data-imprimir>Imprimir / salvar PDF</button>
+  </div>
+  <header class="impressao-cabecalho">
+    <h1>{{ NOME_CLINICA }}</h1>
+    <p>Prontuário multiprofissional · emitido em {{ emitido_em | datahora_br }} por {{ g.usuario.nome }}</p>
+  </header>
+
+  <section>
+    <h2>Identificação</h2>
+    <dl class="dados">
+      <dt>Paciente</dt><dd>{{ paciente.nome }}</dd>
+      <dt>Nascimento</dt><dd>{{ paciente.data_nascimento | data_br or '—' }}{% if paciente.data_nascimento %} ({{ paciente.data_nascimento | idade }}){% endif %}</dd>
+      {% if paciente.cpf %}<dt>CPF</dt><dd>{{ paciente.cpf }}</dd>{% endif %}
+      {% if paciente.responsavel_nome %}<dt>Responsável</dt><dd>{{ paciente.responsavel_nome }}{% if paciente.responsavel_parentesco %} ({{ paciente.responsavel_parentesco }}){% endif %}</dd>{% endif %}
+      <dt>Convênio</dt><dd>{{ paciente.convenio_nome or 'Particular' }}{% if paciente.carteirinha %} · nº {{ paciente.carteirinha }}{% endif %}</dd>
+    </dl>
+  </section>
+
+  {% if paciente.queixa_principal %}<section><h2>Queixa principal</h2><p class="texto-livre">{{ paciente.queixa_principal }}</p></section>{% endif %}
+  {% if paciente.hipotese_diagnostica %}<section><h2>Hipótese diagnóstica</h2><p>{{ paciente.hipotese_diagnostica }}</p></section>{% endif %}
+  {% if paciente.anamnese %}<section><h2>Anamnese</h2><p class="texto-livre">{{ paciente.anamnese }}</p></section>{% endif %}
+
+  <section>
+    <h2>Evoluções ({{ evolucoes | length }})</h2>
+    {% for e in evolucoes %}
+    <article class="evolucao-impressa">
+      <h3>{{ e.data | data_br }}{% if e.especialidade_nome %} · {{ e.especialidade_nome }}{% endif %}{% if e.tipo %} · {{ TIPOS[e.tipo] }}{% endif %}</h3>
+      {% if e.restrita %}
+      <p><em>Registro sigiloso, não incluído nesta cópia.</em></p>
+      {% else %}
+      <div class="texto-livre">{{ e.texto }}</div>
+      {% endif %}
+      <p class="assinatura">{{ e.profissional_nome }}{% if e.registro %} — {{ e.registro }}{% endif %}
+        {% if e.editado_em %}<small>(editada em {{ e.editado_em | datahora_br }})</small>{% endif %}</p>
+    </article>
+    {% else %}
+    <p>Nenhuma evolução registrada.</p>
+    {% endfor %}
+  </section>
+  <p class="rodape-impressao">Documento sigiloso. Contém dados de saúde protegidos pela LGPD e pelos códigos de ética das profissões envolvidas.</p>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

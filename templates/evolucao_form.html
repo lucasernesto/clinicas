@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Editar evolução{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div>
+    <h1>Editar evolução</h1>
+    <p class="discreto">{{ evolucao.paciente_nome }} · {{ evolucao.data | data_br }}</p>
+  </div>
+</div>
+<form method="post" class="cartao">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Registro
+    <textarea name="texto" rows="14" maxlength="20000" required>{{ texto }}</textarea>
+  </label>
+  <label class="check">
+    <input type="checkbox" name="sigilosa" value="1" {{ 'checked' if sigilosa }}>
+    <span>Registro sigiloso <small class="discreto">— os outros profissionais veem que houve atendimento, mas não o conteúdo</small></span>
+  </label>
+  <p class="discreto pequeno">A data da alteração fica registrada junto à evolução.</p>
+  <div class="botoes">
+    <button class="botao botao-primario" type="submit">Salvar</button>
+    <a class="botao" href="{{ url_for('paciente', paciente_id=evolucao.paciente_id, aba='prontuario') }}">Voltar</a>
+  </div>
+</form>
+{% endblock %}

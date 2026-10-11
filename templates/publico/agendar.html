@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block titulo %}Agendar atendimento{% endblock %}
+{% block topo_publico %}{% include "publico/_topo.html" %}{% endblock %}
+{% block classe_main %}publico{% endblock %}
+{% block conteudo %}
+{% set prof_arg = prof_id or '' %}
+{% set esp_arg = especialidade.id if especialidade else '' %}
+<div class="intro-publica">
+  <h1>Agende um atendimento</h1>
+  <p class="discreto">Escolha a área, o dia e o horário. A clínica confirma o agendamento pelo WhatsApp.</p>
+</div>
+
+{% if not areas %}
+<div class="cartao">
+  <p>O agendamento online ainda não está disponível. Entre em contato com a clínica para marcar um horário.</p>
+</div>
+{% else %}
+
+<section class="cartao">
+  <h2><span class="passo">1</span> Qual especialidade?</h2>
+  <div class="chips">
+    {% for e in areas %}
+    <a class="chip {{ 'ativo' if especialidade and e.id == especialidade.id }}" href="{{ url_for('agendar', esp=e.id) }}">{{ e.nome }}</a>
+    {% endfor %}
+  </div>
+</section>
+
+{% if especialidade %}
+<section class="cartao">
+  <h2><span class="passo">2</span> Com quem?</h2>
+  <div class="chips">
+    {% if profissionais | length > 1 %}
+    <a class="chip {{ 'ativo' if not prof_id }}" href="{{ url_for('agendar', esp=esp_arg) }}">Sem preferência</a>
+    {% endif %}
+    {% for p in profissionais %}
+    <a class="chip {{ 'ativo' if p.id == prof_id or profissionais | length == 1 }}" href="{{ url_for('agendar', esp=esp_arg, prof=p.id) }}">
+      <span class="bolinha" style="background: {{ p.cor }}"></span>{{ p.nome }}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="cartao">
+  <h2><span class="passo">3</span> Qual dia?</h2>
+  {% if dias %}
+  <div class="chips chips-dias">
+    {% for d in dias %}
+    <a class="chip chip-dia {{ 'ativo' if d.data == dia }}" href="{{ url_for('agendar', esp=esp_arg, prof=prof_arg, dia=d.data) }}">
+      <small>{{ (d.data | dia_semana)[:3] }}</small>
+      <strong>{{ (d.data | data_br)[:5] }}</strong>
+      <small class="discreto">{{ d.livres }} {{ 'horário' if d.livres == 1 else 'horários' }}</small>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="vazio">Não há horários livres nos próximos dias{% if prof_id and profissionais | length > 1 %} com esse profissional. <a href="{{ url_for('agendar', esp=esp_arg) }}">Ver todas as agendas de {{ especialidade.nome }}</a>{% endif %}.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if dia %}
+<form method="post" action="{{ url_for('agendar') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="esp" value="{{ esp_arg }}">
+  <input type="hidden" name="prof" value="{{ prof_arg }}">
+  <div class="campo-robo" aria-hidden="true">
+    <label>Não preencha <input name="site" tabindex="-1" autocomplete="off"></label>
+  </div>
+
+  <section class="cartao">
+    <h2><span class="passo">4</span> Qual horário? <small class="discreto">{{ dia | dia_semana }}, {{ dia | data_br }}</small></h2>
+    <div class="horarios-grade">
+      {% for inicio, p in opcoes.items() %}
+      {% set valor = p.id ~ '|' ~ inicio %}
+      <label class="horario">
+        <input type="radio" name="horario" value="{{ valor }}" required {{ 'checked' if form.horario == valor }}>
+        <span>
+          <strong>{{ inicio | hora }}</strong>
+          {% if not prof_id and profissionais | length > 1 %}<small>{{ p.nome.split()[0] }}</small>{% endif %}
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="cartao">
+    <h2><span class="passo">5</span> Seus dados</h2>
+    <div class="grade-form">
+      <fieldset class="col-total opcoes-tipo">
+        <legend class="oculto">Tipo de atendimento</legend>
+        <label class="check"><input type="radio" name="tipo" value="avaliacao" required {{ 'checked' if form.tipo != 'terapia' }}> Primeira consulta (avaliação)</label>
+        <label class="check"><input type="radio" name="tipo" value="terapia" {{ 'checked' if form.tipo == 'terapia' }}> Já sou paciente da clínica</label>
+      </fieldset>
+      <label class="col-2">Particular ou plano de saúde?
+        <select name="cobranca">
+          <option value="particular">Particular</option>
+          {% for c in planos %}
+          <option value="{{ c.id }}" {{ 'selected' if form.cobranca == c.id|string }}>{{ c.nome }}</option>
+          {% endfor %}
+        </select>
+        {% if planos %}<small>Planos aceitos em {{ especialidade.nome }}: {{ planos | map(attribute='nome') | join(', ') }}.</small>
+        {% else %}<small>{{ especialidade.nome }} é atendida só no particular.</small>{% endif %}
+      </label>
+      {% if planos %}
+      <label class="col-2">Nº da carteirinha <small>(se for pelo plano)</small>
+        <input name="carteirinha" value="{{ form.carteirinha }}" maxlength="40" inputmode="numeric">
+      </label>
+      {% endif %}
+      <label class="col-2">Nome de quem será atendido
+        <input name="paciente_nome" value="{{ form.paciente_nome }}" required maxlength="120" autocomplete="name">
+      </label>
+      <label>Data de nascimento
+        <input type="date" name="data_nascimento" value="{{ form.data_nascimento }}">
+      </label>
+      <label>WhatsApp
+        <input type="tel" name="telefone" value="{{ form.telefone }}" required placeholder="(11) 98765-4321" autocomplete="tel">
+      </label>
+      <label class="col-2">Nome do responsável <small>(se for criança ou precisar de acompanhante)</small>
+        <input name="responsavel_nome" value="{{ form.responsavel_nome }}" maxlength="120">
+      </label>
+      <label class="col-2">E-mail <small>(opcional)</small>
+        <input type="email" name="email" value="{{ form.email }}" maxlength="120" autocomplete="email">
+      </label>
+      <label class="col-total">Conte brevemente o motivo da procura <small>(opcional)</small>
+        <textarea name="motivo" rows="3" maxlength="500" placeholder="Ex.: meu filho de 3 anos fala poucas palavras">{{ form.motivo }}</textarea>
+      </label>
+      <label class="check col-total consentimento">
+        <input type="checkbox" name="consentimento" value="1" required {{ 'checked' if form.consentimento }}>
+        <span>Autorizo a {{ NOME_CLINICA }} a usar estes dados para agendar e confirmar o atendimento,
+          e a entrar em contato pelo WhatsApp informado.</span>
+      </label>
+    </div>
+    <button class="botao botao-primario botao-grande" type="submit">Solicitar agendamento</button>
+  </section>
+</form>
+{% endif %}
+{% endif %}
+{% endblock %}

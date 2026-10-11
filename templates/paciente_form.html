@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar paciente' if paciente else 'Novo paciente' }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>{{ 'Editar ' ~ paciente.nome if paciente else 'Novo paciente' }}</h1>
+</div>
+
+<form method="post" class="cartao">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <fieldset class="grade-form">
+    <legend>Paciente</legend>
+    <label class="col-2">Nome completo
+      <input name="nome" value="{{ form.nome }}" required maxlength="120">
+    </label>
+    <label>Data de nascimento
+      <input type="date" name="data_nascimento" value="{{ form.data_nascimento }}">
+    </label>
+    <label>CPF
+      <input name="cpf" value="{{ form.cpf }}" inputmode="numeric" maxlength="14">
+    </label>
+    <label>Telefone
+      <input type="tel" name="telefone" value="{{ form.telefone }}" placeholder="(11) 98765-4321">
+    </label>
+    <label>E-mail
+      <input type="email" name="email" value="{{ form.email }}" maxlength="120">
+    </label>
+    <label class="col-total">Endereço
+      <input name="endereco" value="{{ form.endereco }}" maxlength="300">
+    </label>
+  </fieldset>
+
+  <fieldset class="grade-form">
+    <legend>Responsável <small class="discreto">(crianças, adolescentes ou quando houver)</small></legend>
+    <label class="col-2">Nome
+      <input name="responsavel_nome" value="{{ form.responsavel_nome }}" maxlength="120">
+    </label>
+    <label>Parentesco
+      <input name="responsavel_parentesco" value="{{ form.responsavel_parentesco }}" maxlength="40" placeholder="Mãe, pai, avó…">
+    </label>
+    <label>Telefone / WhatsApp
+      <input type="tel" name="responsavel_telefone" value="{{ form.responsavel_telefone }}">
+    </label>
+  </fieldset>
+
+  <fieldset class="grade-form">
+    <legend>Atendimento</legend>
+    <label class="col-2">Profissional de referência
+      <select name="profissional_id">
+        <option value="">—</option>
+        {% for p in profissionais %}
+        <option value="{{ p.id }}" {{ 'selected' if form.profissional_id == p.id|string }}>{{ p.nome }}{% if p.especialidades_txt %} ({{ p.especialidades_txt }}){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Plano de saúde
+      <select name="convenio_id">
+        <option value="">Particular</option>
+        {% for c in listar_convenios() %}
+        <option value="{{ c.id }}" {{ 'selected' if form.convenio_id == c.id|string }}>{{ c.nome }}</option>
+        {% endfor %}
+        {% if paciente and paciente.convenio_id and paciente.convenio_id not in listar_convenios() | map(attribute='id') | list %}
+        <option value="{{ paciente.convenio_id }}" selected>{{ paciente.convenio_nome }} (plano desativado)</option>
+        {% endif %}
+      </select>
+    </label>
+    <label>Nº da carteirinha
+      <input name="carteirinha" value="{{ form.carteirinha }}" maxlength="40" placeholder="se for por plano">
+    </label>
+    <label>Valor da sessão particular (R$)
+      <input name="valor_sessao" value="{{ form.valor_sessao }}" inputmode="decimal" placeholder="0,00">
+      <small>Pelo plano vale o valor cadastrado em Convênios.</small>
+    </label>
+    <label class="col-total">Observações administrativas
+      <textarea name="observacoes" rows="2" maxlength="2000" placeholder="Horários preferidos, escola, quem traz…">{{ form.observacoes }}</textarea>
+    </label>
+    <label class="check col-total">
+      <input type="checkbox" name="ativo" value="1" {{ 'checked' if form.ativo }}>
+      Paciente ativo <small class="discreto">(desmarque em caso de alta ou desistência; o histórico é mantido)</small>
+    </label>
+  </fieldset>
+
+  {% if pode_prontuario() %}
+  <fieldset class="grade-form campo-clinico">
+    <legend>Dados clínicos <small class="discreto">(visíveis só para quem atende)</small></legend>
+    <label class="col-total">Queixa principal
+      <textarea name="queixa_principal" rows="2" maxlength="2000">{{ form.queixa_principal }}</textarea>
+    </label>
+    <label class="col-total">Hipótese diagnóstica
+      <input name="hipotese_diagnostica" value="{{ form.hipotese_diagnostica }}" maxlength="1000">
+    </label>
+    <label class="col-total">Anamnese
+      <textarea name="anamnese" rows="10" maxlength="20000" placeholder="Histórico gestacional e de desenvolvimento, marcos de linguagem, audição, alimentação, sono, escolaridade, histórico familiar…">{{ form.anamnese }}</textarea>
+    </label>
+  </fieldset>
+  {% endif %}
+
+  <div class="botoes">
+    <button class="botao botao-primario" type="submit">Salvar</button>
+    <a class="botao" href="{{ url_for('paciente', paciente_id=paciente.id) if paciente else url_for('pacientes') }}">Voltar</a>
+  </div>
+</form>
+{% endblock %}

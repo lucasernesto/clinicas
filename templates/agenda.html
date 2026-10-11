@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cartao_agendamento, filtro_profissional %}
+{% block titulo %}Agenda{% endblock %}
+{% block classe_main %}largo{% endblock %}
+{% block conteudo %}
+{% set voltar = request.full_path.rstrip('?') %}
+{% set prof_arg = prof_id if prof_id else 'todos' %}
+<div class="cabecalho">
+  <div>
+    <h1>Agenda</h1>
+    <p class="discreto">Semana de {{ dias[0].data | data_br }} a {{ dias[-1].data | data_br }}</p>
+  </div>
+  <div class="cabecalho-acoes">
+    {{ filtro_profissional(profissionais, prof_id, 'agenda', {'semana': segunda.isoformat()}) }}
+    <div class="navegacao-semana">
+      <a class="botao" href="{{ url_for('agenda', semana=anterior, prof=prof_arg) }}" aria-label="Semana anterior">‹</a>
+      <a class="botao" href="{{ url_for('agenda', prof=prof_arg) }}">Hoje</a>
+      <a class="botao" href="{{ url_for('agenda', semana=proxima, prof=prof_arg) }}" aria-label="Próxima semana">›</a>
+    </div>
+    <a class="botao botao-primario" href="{{ url_for('agendamento_novo', prof=prof_id or '') }}">+ Agendar</a>
+  </div>
+</div>
+
+<p class="discreto pequeno">
+  {% if mostrar_cancelados %}
+  <a href="{{ url_for('agenda', semana=segunda.isoformat(), prof=prof_arg) }}">Ocultar cancelados</a>
+  {% else %}
+  <a href="{{ url_for('agenda', semana=segunda.isoformat(), prof=prof_arg, cancelados=1) }}">Mostrar cancelados</a>
+  {% endif %}
+</p>
+
+<div class="semana">
+  {% for d in dias %}
+  <section class="dia {{ 'dia-hoje' if d.data == hoje }}">
+    <header class="dia-cabecalho">
+      <div><strong>{{ d.nome }}</strong> <span class="discreto">{{ (d.data | data_br)[:5] }}</span></div>
+      <a class="acao" href="{{ url_for('agendamento_novo', data=d.data, prof=prof_id or '') }}" title="Agendar neste dia">+</a>
+    </header>
+    {% for s in d.pedidos %}
+    <a class="pedido-online" href="{{ url_for('solicitacao', solicitacao_id=s.id) }}" style="--cor-prof: {{ s.profissional_cor }}">
+      <span class="ag-hora">{{ s.inicio | hora }}–{{ s.fim | hora }}</span>
+      <span class="selo selo-sol-pendente">Pedido online</span>
+      <strong>{{ s.paciente_nome }}</strong>
+      <small class="discreto">{{ s.especialidade_nome or '' }}{% if not prof_id %} · {{ s.profissional_nome }}{% endif %}</small>
+    </a>
+    {% endfor %}
+    {% for a in d.itens %}
+      {{ cartao_agendamento(a, voltar, mostrar_prof=not prof_id, compacto=true) }}
+    {% else %}
+      {% if not d.pedidos %}<p class="vazio pequeno">Livre</p>{% endif %}
+    {% endfor %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

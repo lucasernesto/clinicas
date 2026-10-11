@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block titulo %}Planos de saúde{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div>
+    <p class="pequeno"><a href="{{ url_for('faturamento') }}">← Faturamento</a></p>
+    <h1>Planos de saúde</h1>
+    <p class="discreto">Marque as especialidades que cada plano cobre e quanto ele paga por sessão.
+      Só as marcadas aparecem para o paciente no agendamento online.</p>
+  </div>
+</div>
+
+{% for c in convenios %}
+<form method="post" class="cartao {{ 'inativo' if not c.ativo }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="id" value="{{ c.id }}">
+  <div class="cabecalho-plano">
+    <label class="crescer">Nome do plano
+      <input name="nome" value="{{ c.nome }}" maxlength="60" required>
+    </label>
+    <span class="discreto pequeno">{{ pacientes_por_plano.get(c.id, 0) }} pacientes ativos{% if not c.ativo %} · <strong>desativado</strong>{% endif %}</span>
+  </div>
+  <table class="tabela tabela-cobertura">
+    <thead><tr><th>Especialidade</th><th>Cobre</th><th>Valor pago por sessão (R$)</th></tr></thead>
+    <tbody>
+      {% for e in especialidades %}
+      {% set chave = (c.id, e.id) %}
+      <tr>
+        <td>{{ e.nome }}{% if not e.ativo %} <small class="discreto">(inativa)</small>{% endif %}</td>
+        <td><input type="checkbox" name="cobre_{{ e.id }}" value="1" {{ 'checked' if chave in coberturas }} aria-label="{{ c.nome }} cobre {{ e.nome }}"></td>
+        <td>
+          <input name="valor_{{ e.id }}" inputmode="decimal" placeholder="0,00" class="campo-valor"
+                 value="{{ coberturas[chave] | centavos_form if chave in coberturas and coberturas[chave] else '' }}" aria-label="Valor {{ c.nome }} {{ e.nome }}">
+          {% if chave in coberturas and not coberturas[chave] %}<span class="texto-alerta pequeno">valor não definido</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="botoes">
+    <button class="botao botao-primario" type="submit" name="acao" value="salvar">Salvar {{ c.nome }}</button>
+    <button class="botao-link" type="submit" name="acao" value="alternar" formnovalidate>{{ 'Desativar plano' if c.ativo else 'Reativar plano' }}</button>
+  </div>
+</form>
+{% endfor %}
+
+<form method="post" class="cartao form-linha">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="acao" value="criar">
+  <label class="crescer">Novo plano
+    <input name="nome" maxlength="60" required placeholder="Nome do plano">
+  </label>
+  <button class="botao botao-primario" type="submit">Adicionar</button>
+</form>
+<p class="discreto pequeno">Mudar um valor vale para as próximas sessões; as já agendadas mantêm o valor de quando foram marcadas.
+  Desativar um plano o tira dos formulários e do site, mas mantém o histórico.</p>
+{% endblock %}

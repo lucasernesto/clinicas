@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cartao_agendamento, filtro_profissional %}
+{% block titulo %}Hoje{% endblock %}
+{% block conteudo %}
+{% set voltar = request.full_path.rstrip('?') %}
+<div class="cabecalho">
+  <div>
+    <h1>Olá, {{ g.usuario.nome.split()[0] }}</h1>
+    <p class="discreto">{{ dia | dia_semana }}, {{ dia | data_br }}</p>
+  </div>
+  <div class="cabecalho-acoes">
+    {{ filtro_profissional(profissionais, prof_id, 'hoje') }}
+    <a class="botao botao-primario" href="{{ url_for('agendamento_novo', data=dia) }}">+ Agendar</a>
+  </div>
+</div>
+
+<div class="colunas-hoje">
+  <section>
+    <h2>Atendimentos de hoje <span class="contador">{{ atendimentos | rejectattr('status', 'equalto', 'cancelado') | list | length }}</span></h2>
+    {% for a in atendimentos %}
+      {{ cartao_agendamento(a, voltar, mostrar_prof=not prof_id) }}
+    {% else %}
+      <p class="vazio">Nenhum atendimento marcado para hoje.</p>
+    {% endfor %}
+  </section>
+
+  <aside class="lateral">
+    {% if solicitacoes %}
+    <section class="painel painel-online">
+      <h2>Pedidos pelo site <span class="contador contador-alerta">{{ solicitacoes_pendentes }}</span></h2>
+      <p class="discreto">Aguardando confirmação. O horário fica reservado até alguém responder.</p>
+      <ul class="lista-simples">
+        {% for s in solicitacoes %}
+        <li>
+          <a href="{{ url_for('solicitacao', solicitacao_id=s.id) }}">{{ s.paciente_nome }}</a>
+          <span class="discreto">{{ (s.inicio | dia_semana)[:3] }} {{ s.inicio | datahora_br }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if solicitacoes_pendentes > solicitacoes | length %}<p class="pequeno"><a href="{{ url_for('solicitacoes') }}">Ver todos</a></p>{% endif %}
+    </section>
+    {% endif %}
+
+    {% if pendentes %}
+    <section class="painel painel-alerta">
+      <h2>Evoluções pendentes <span class="contador">{{ pendentes | length }}</span></h2>
+      <p class="discreto">Sessões suas marcadas como realizadas e ainda sem registro no prontuário.</p>
+      <ul class="lista-simples">
+        {% for a in pendentes %}
+        <li>
+          <a href="{{ url_for('paciente', paciente_id=a.paciente_id, aba='prontuario', agendamento=a.id) }}#nova-evolucao">{{ a.paciente_nome }}</a>
+          <span class="discreto">{{ a.inicio | datahora_br }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section class="painel">
+      <h2>Confirmar para {{ amanha | dia_semana | lower }} <span class="contador">{{ a_confirmar | length }}</span></h2>
+      {% for a in a_confirmar %}
+        {{ cartao_agendamento(a, voltar, mostrar_prof=not prof_id, compacto=true) }}
+      {% else %}
+        <p class="vazio">Nada a confirmar.</p>
+      {% endfor %}
+    </section>
+
+    {% if sem_desfecho %}
+    <section class="painel">
+      <h2>Sessões passadas sem desfecho <span class="contador">{{ sem_desfecho | length }}</span></h2>
+      <p class="discreto">Marque se foram realizadas, faltas ou canceladas.</p>
+      {% for a in sem_desfecho %}
+        {{ cartao_agendamento(a, voltar, mostrar_data=true, mostrar_prof=not prof_id, compacto=true) }}
+      {% endfor %}
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

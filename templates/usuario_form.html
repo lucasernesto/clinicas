@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar usuário' if usuario else 'Novo usuário' }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>{{ 'Editar ' ~ usuario.nome if usuario else 'Novo usuário' }}</h1>
+</div>
+<form method="post" class="cartao grade-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label class="col-2">Nome
+    <input name="nome" value="{{ form.nome }}" required maxlength="120">
+  </label>
+  <label class="col-2">E-mail (login)
+    <input type="email" name="email" value="{{ form.email }}" required maxlength="120">
+  </label>
+  <label>Papel
+    <select name="papel">
+      {% for chave, rotulo in PAPEIS.items() %}
+      <option value="{{ chave }}" {{ 'selected' if form.papel == chave }}>{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Registro profissional
+    <input name="registro" value="{{ form.registro }}" maxlength="30" placeholder="CRFa, CRP, CRN…">
+  </label>
+  <label class="check col-2">
+    <input type="checkbox" name="atende" value="1" {{ 'checked' if form.atende }}>
+    Atende pacientes <small class="discreto">(aparece na agenda e acessa o prontuário; sempre ligado para "Profissional de saúde")</small>
+  </label>
+  <fieldset class="col-total">
+    <legend>Especialidades <small class="discreto">(quem atende precisa de ao menos uma)</small></legend>
+    <div class="chips">
+      {% for e in especialidades %}
+      <label class="check chip-check">
+        <input type="checkbox" name="especialidades" value="{{ e.id }}" {{ 'checked' if e.id in marcadas }}>
+        {{ e.nome }}{% if not e.ativo %} <small>(inativa)</small>{% endif %}
+      </label>
+      {% endfor %}
+    </div>
+    <small class="discreto"><a href="{{ url_for('especialidades_admin') }}">Gerenciar especialidades</a></small>
+  </fieldset>
+  <fieldset class="col-total cores">
+    <legend>Cor na agenda</legend>
+    {% for c in CORES %}
+    <label class="cor" style="--c: {{ c }}">
+      <input type="radio" name="cor" value="{{ c }}" {{ 'checked' if form.cor == c }}>
+      <span aria-label="{{ c }}"></span>
+    </label>
+    {% endfor %}
+  </fieldset>
+  <label class="col-2">{{ 'Nova senha (deixe em branco para manter)' if usuario else 'Senha inicial' }}
+    <input type="text" name="senha" {{ '' if usuario else 'required' }} minlength="8" autocomplete="new-password">
+    <small>Mínimo 8 caracteres. A pessoa troca no primeiro acesso.</small>
+  </label>
+  {% if usuario %}
+  <label class="check col-2">
+    <input type="checkbox" name="ativo" value="1" {{ 'checked' if form.ativo }}>
+    Usuário ativo
+  </label>
+  {% else %}
+  <input type="hidden" name="ativo" value="1">
+  {% endif %}
+  <div class="col-total botoes">
+    <button class="botao botao-primario" type="submit">Salvar</button>
+    <a class="botao" href="{{ url_for('usuarios') }}">Voltar</a>
+  </div>
+</form>
+{% endblock %}

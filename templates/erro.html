@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block conteudo %}
+<div class="cartao estreito">
+  <h1>{{ titulo }}</h1>
+  <p>{{ mensagem }}</p>
+  <p><a class="botao" href="{{ url_for('hoje') }}">Voltar ao início</a></p>
+</div>
+{% endblock %}

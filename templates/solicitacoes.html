@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Solicitações online{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div>
+    <h1>Solicitações online</h1>
+    <p class="discreto">Pedidos feitos pela página de agendamento:
+      <a href="{{ url_for('agendar', _external=True) }}" target="_blank" rel="noopener">{{ url_for('agendar', _external=True) }}</a></p>
+  </div>
+</div>
+
+<nav class="abas">
+  {% for chave, rotulo in [('pendente', 'Aguardando'), ('aprovada', 'Confirmadas'), ('recusada', 'Recusadas'), ('cancelada', 'Canceladas pelo paciente'), ('todas', 'Todas')] %}
+  <a href="{{ url_for('solicitacoes', status=chave) }}" class="{{ 'ativo' if filtro == chave }}">{{ rotulo }}</a>
+  {% endfor %}
+</nav>
+
+<div class="cartao sem-padding">
+  <table class="tabela">
+    <thead><tr><th>Horário pedido</th><th>Paciente</th><th>Tipo</th><th>Profissional</th><th>Situação</th><th>Enviado em</th></tr></thead>
+    <tbody>
+      {% for s in solicitacoes %}
+      <tr>
+        <td><a href="{{ url_for('solicitacao', solicitacao_id=s.id) }}"><strong>{{ (s.inicio | dia_semana)[:3] }} {{ s.inicio | datahora_br }}</strong></a></td>
+        <td>{{ s.paciente_nome }}{% if s.convenio_nome %} <span class="selo selo-plano">{{ s.convenio_nome }}</span>{% endif %}
+          {% if s.responsavel_nome %}<br><small class="discreto">Resp.: {{ s.responsavel_nome }}</small>{% endif %}</td>
+        <td>{{ 'Primeira consulta' if s.tipo == 'avaliacao' else 'Já é paciente' }}</td>
+        <td><span class="bolinha" style="background: {{ s.profissional_cor }}"></span>{{ s.profissional_nome }}
+          {% if s.especialidade_nome %}<br><small class="discreto">{{ s.especialidade_nome }}</small>{% endif %}</td>
+        <td>
+          {% if s.status == 'pendente' and s.inicio < agora %}<span class="selo">Expirada</span>
+          {% else %}<span class="selo selo-sol-{{ s.status }}">{{ STATUS_SOLICITACAO[s.status] }}</span>{% endif %}
+        </td>
+        <td>{{ s.criado_em | datahora_br }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="vazio">{% if filtro == 'pendente' %}Nenhum pedido aguardando resposta.{% else %}Nada por aqui.{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

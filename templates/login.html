@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block classe_main %}centralizado{% endblock %}
+{% block conteudo %}
+<div class="cartao cartao-login">
+  <h1>{{ NOME_CLINICA }}</h1>
+  <p class="discreto">Entre com seu e-mail e senha.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>E-mail
+      <input type="email" name="email" value="{{ email }}" required autofocus autocomplete="username">
+    </label>
+    <label>Senha
+      <input type="password" name="senha" required autocomplete="current-password">
+    </label>
+    <button class="botao botao-primario largo" type="submit">Entrar</button>
+  </form>
+</div>
+<p class="pequeno discreto">É paciente? <a href="{{ url_for('agendar') }}">Agende um horário aqui</a>.</p>
+{% endblock %}

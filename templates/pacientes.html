@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Pacientes{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>Pacientes {% if inativos %}<small class="discreto">inativos</small>{% endif %}</h1>
+  <div class="cabecalho-acoes">
+    <form method="get" class="busca">
+      {% if inativos %}<input type="hidden" name="inativos" value="1">{% endif %}
+      <input type="search" name="q" value="{{ busca }}" placeholder="Nome, responsável, telefone ou CPF" aria-label="Buscar paciente">
+      <button class="botao" type="submit">Buscar</button>
+    </form>
+    <a class="botao botao-primario" href="{{ url_for('paciente_novo') }}">+ Paciente</a>
+  </div>
+</div>
+
+<div class="cartao sem-padding">
+  <table class="tabela">
+    <thead>
+      <tr><th>Nome</th><th>Idade</th><th>Responsável</th><th>Telefone</th><th>Referência</th><th>Próxima sessão</th></tr>
+    </thead>
+    <tbody>
+      {% for p in pacientes %}
+      <tr>
+        <td><a href="{{ url_for('paciente', paciente_id=p.id) }}"><strong>{{ p.nome }}</strong></a>
+          {% if p.convenio_nome %}<br><span class="selo selo-plano">{{ p.convenio_nome }}</span>{% endif %}</td>
+        <td>{{ p.data_nascimento | idade }}</td>
+        <td>{{ p.responsavel_nome or '' }}</td>
+        <td>{{ p.responsavel_telefone or p.telefone or '' }}</td>
+        <td>{{ p.profissional_nome or '' }}</td>
+        <td>{% if p.proxima %}{{ p.proxima | datahora_br }}{% else %}<span class="discreto">—</span>{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="vazio">{% if busca %}Nenhum paciente encontrado para “{{ busca }}”.{% else %}Nenhum paciente cadastrado.{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="pequeno">
+  {% if inativos %}<a href="{{ url_for('pacientes') }}">Ver pacientes ativos</a>
+  {% else %}<a href="{{ url_for('pacientes', inativos=1) }}">Ver pacientes inativos (alta ou desistência)</a>{% endif %}
+</p>
+{% endblock %}

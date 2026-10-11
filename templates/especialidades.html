@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titulo %}Especialidades{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div>
+    <p class="pequeno"><a href="{{ url_for('usuarios') }}">← Usuários</a></p>
+    <h1>Especialidades</h1>
+    <p class="discreto">Aparecem na agenda, no prontuário, no financeiro e no agendamento online.</p>
+  </div>
+</div>
+
+<div class="cartao sem-padding">
+  <table class="tabela">
+    <thead><tr><th>Nome</th><th>Profissionais</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+      {% for e in especialidades %}
+      <tr class="{{ 'riscado' if not e.ativo }}">
+        <td>
+          <form method="post" class="form-linha">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="acao" value="renomear">
+            <input type="hidden" name="id" value="{{ e.id }}">
+            <input name="nome" value="{{ e.nome }}" maxlength="60" required aria-label="Nome da especialidade">
+            <button class="botao botao-pequeno" type="submit">Renomear</button>
+          </form>
+        </td>
+        <td>{{ e.profissionais or '—' }}</td>
+        <td>{{ 'Ativa' if e.ativo else 'Inativa' }}</td>
+        <td>
+          <form method="post" class="form-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="acao" value="alternar">
+            <input type="hidden" name="id" value="{{ e.id }}">
+            <button class="botao-link" type="submit">{{ 'Desativar' if e.ativo else 'Reativar' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<form method="post" class="cartao form-linha">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="acao" value="criar">
+  <label class="crescer">Nova especialidade
+    <input name="nome" maxlength="60" required placeholder="Ex.: Terapia ocupacional">
+  </label>
+  <button class="botao botao-primario" type="submit">Adicionar</button>
+</form>
+<p class="discreto pequeno">Desativar uma especialidade a tira do agendamento online e dos novos agendamentos; o histórico continua.</p>
+{% endblock %}

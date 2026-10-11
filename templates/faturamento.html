@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block titulo %}Faturamento de convênios{% endblock %}
+{% block conteudo %}
+{% set meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'] %}
+{% set mes_txt = mes.strftime('%Y-%m') %}
+<div class="cabecalho">
+  <div>
+    <h1>Faturamento de convênios</h1>
+    <p class="discreto">Sessões realizadas pelo plano em {{ meses[mes.month - 1] }} de {{ mes.year }}</p>
+  </div>
+  <div class="cabecalho-acoes">
+    <form method="get" class="filtro-prof">
+      <input type="hidden" name="mes" value="{{ mes_txt }}">
+      <label for="f-conv">Plano</label>
+      <select id="f-conv" name="convenio" data-autoenviar>
+        <option value="">Todos</option>
+        {% for c in convenios %}
+        <option value="{{ c.id }}" {{ 'selected' if c.id == convenio_id }}>{{ c.nome }}</option>
+        {% endfor %}
+      </select>
+      <label for="f-sit">Situação</label>
+      <select id="f-sit" name="situacao" data-autoenviar>
+        <option value="todas">Todas</option>
+        {% for chave, rotulo in FATURAMENTO.items() %}
+        <option value="{{ chave }}" {{ 'selected' if situacao == chave }}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+      <button class="botao botao-pequeno" type="submit" data-sem-js>Filtrar</button>
+    </form>
+    <div class="navegacao-semana">
+      <a class="botao" href="{{ url_for('faturamento', mes=anterior, convenio=convenio_id or '', situacao=situacao) }}" aria-label="Mês anterior">‹</a>
+      <a class="botao" href="{{ url_for('faturamento', convenio=convenio_id or '', situacao=situacao) }}">Mês atual</a>
+      <a class="botao" href="{{ url_for('faturamento', mes=proximo, convenio=convenio_id or '', situacao=situacao) }}" aria-label="Próximo mês">›</a>
+    </div>
+    {% if g.usuario.papel == 'admin' %}<a class="botao" href="{{ url_for('convenios_admin') }}">Planos e valores</a>{% endif %}
+  </div>
+</div>
+
+<div class="resumo-numeros resumo-4">
+  {% for chave, rotulo in FATURAMENTO.items() %}
+  <div class="fat-{{ chave or 'a_faturar' }}"><span>{{ rotulo }}</span><strong>{{ totais[chave] | brl }}</strong></div>
+  {% endfor %}
+</div>
+{% if sem_guia or sem_carteirinha %}
+<p class="aviso aviso-info">
+  {% if sem_guia %}{{ sem_guia }} {{ 'sessão' if sem_guia == 1 else 'sessões' }} sem nº de guia.{% endif %}
+  {% if sem_carteirinha %}{{ sem_carteirinha }} {{ 'sessão' if sem_carteirinha == 1 else 'sessões' }} de paciente sem carteirinha no cadastro.{% endif %}
+  Complete antes de enviar ao plano.
+</p>
+{% endif %}
+
+<form method="post" class="cartao sem-padding">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="voltar" value="{{ request.full_path.rstrip('?') }}">
+  <table class="tabela">
+    <thead>
+      <tr>
+        <th><input type="checkbox" data-marcar-todos="sessoes" aria-label="Marcar todas"></th>
+        <th>Data</th><th>Paciente</th><th>Carteirinha</th><th>Plano</th><th>Especialidade</th><th>Profissional</th><th>Guia</th><th>Situação</th><th class="num">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sessoes %}
+      <tr>
+        <td><input type="checkbox" name="sessoes" value="{{ s.id }}" aria-label="Marcar sessão de {{ s.paciente_nome }}"></td>
+        <td>{{ s.inicio | datahora_br }}</td>
+        <td><a href="{{ url_for('paciente', paciente_id=s.paciente_id, aba='financeiro') }}">{{ s.paciente_nome }}</a></td>
+        <td>{{ s.carteirinha or '' }}{% if not s.carteirinha %}<span class="texto-alerta">falta</span>{% endif %}</td>
+        <td>{{ s.convenio_nome }}</td>
+        <td>{{ s.especialidade_nome or '' }}</td>
+        <td>{{ s.profissional_nome }}</td>
+        <td>{% if s.guia %}{{ s.guia }}{% else %}<a class="texto-alerta" href="{{ url_for('agendamento_editar', agendamento_id=s.id, voltar=request.full_path.rstrip('?')) }}">informar</a>{% endif %}</td>
+        <td><span class="selo selo-fat-{{ s.faturamento or 'a_faturar' }}">{{ FATURAMENTO[s.faturamento or ''] }}</span></td>
+        <td class="num">{{ s.valor_centavos | brl }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" class="vazio">Nenhuma sessão pelo plano neste filtro.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if sessoes %}
+  <div class="barra-lote">
+    <label for="nova-sit">Marcar selecionadas como</label>
+    <select id="nova-sit" name="situacao">
+      {% for chave, rotulo in FATURAMENTO.items() %}
+      <option value="{{ chave }}">{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+    <button class="botao botao-primario" type="submit">Aplicar</button>
+  </div>
+  {% endif %}
+</form>
+<p class="discreto pequeno">
+  Fluxo: <strong>a faturar</strong> (sessão realizada) → <strong>faturado</strong> (enviado ao plano) → <strong>pago</strong> ou <strong>glosado</strong> (o plano negou).
+  Faltas em sessões pelo plano não são cobradas do plano nem do paciente.
+</p>
+{% endblock %}

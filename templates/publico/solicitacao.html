@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}Seu agendamento{% endblock %}
+{% block topo_publico %}{% include "publico/_topo.html" %}{% endblock %}
+{% block classe_main %}publico{% endblock %}
+{% block conteudo %}
+<div class="cartao status-publico status-{{ s.status }}">
+  {% if recem_criada %}
+  <p class="aviso aviso-sucesso">Pedido enviado! Guarde este link para acompanhar.</p>
+  {% endif %}
+  <p class="selo-grande">{{ STATUS_SOLICITACAO[s.status] }}</p>
+  <h1>{{ s.inicio | dia_semana }}, {{ s.inicio | data_br }} às {{ s.inicio | hora }}</h1>
+  <p class="discreto">{% if s.especialidade_nome %}{{ s.especialidade_nome }} · {% endif %}{{ TIPOS[s.tipo] }} de {{ s.paciente_nome.split()[0] }} com {{ s.profissional_nome }}
+    · {{ 'Plano ' ~ s.convenio_nome if s.convenio_nome else 'Particular' }}</p>
+
+  {% if s.status == 'pendente' and not passou %}
+  <p>O horário está reservado para você. A clínica vai confirmar pelo WhatsApp {{ s.telefone | telefone }}.</p>
+  <form method="post" action="{{ url_for('solicitacao_publica_cancelar', codigo=s.codigo) }}"
+        data-confirmar="Cancelar este pedido e liberar o horário?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="botao" type="submit">Cancelar pedido</button>
+  </form>
+  {% elif s.status == 'pendente' %}
+  <p>Este pedido não foi respondido a tempo. Escolha outro horário ou fale com a clínica.</p>
+  {% elif s.status == 'aprovada' %}
+  <p>Tudo certo, esperamos vocês! Se precisar desmarcar, avise a clínica com antecedência.</p>
+  {% elif s.status == 'recusada' %}
+  <p>Não foi possível confirmar este horário.{% if s.resposta %} {{ s.resposta }}{% endif %}</p>
+  <p><a class="botao botao-primario" href="{{ url_for('agendar') }}">Escolher outro horário</a></p>
+  {% else %}
+  <p>Pedido cancelado.</p>
+  <p><a class="botao" href="{{ url_for('agendar') }}">Fazer novo agendamento</a></p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block titulo %}Horários de atendimento{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div>
+    <h1>Horários de atendimento</h1>
+    <p class="discreto">Definem os horários oferecidos no agendamento online. A agenda interna continua livre para encaixes.</p>
+  </div>
+  {% if editaveis | length > 1 %}
+  <form method="get" class="filtro-prof">
+    <label for="prof">Profissional</label>
+    <select id="prof" name="prof" data-autoenviar>
+      {% for p in editaveis %}
+      <option value="{{ p.id }}" {{ 'selected' if p.id == prof.id }}>{{ p.nome }}</option>
+      {% endfor %}
+    </select>
+    <button class="botao botao-pequeno" type="submit" data-sem-js>Ver</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if not prof %}
+<div class="cartao"><p>Nenhum profissional que atende está cadastrado. Cadastre em Usuários.</p></div>
+{% else %}
+<form method="post" class="cartao">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="prof" value="{{ prof.id }}">
+  <h2>{{ prof.nome }}</h2>
+
+  <div class="grade-form">
+    <label class="check col-2">
+      <input type="checkbox" name="agenda_online" value="1" {{ 'checked' if form.agenda_online }}>
+      Aceitar agendamento online
+    </label>
+    <label>Duração de cada horário
+      <select name="duracao_online">
+        {% for d in DURACOES %}
+        <option value="{{ d }}" {{ 'selected' if form.duracao_online == d|string }}>{{ d }} min</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <table class="tabela tabela-horarios">
+    <thead><tr><th>Dia</th><th>1º turno</th><th>2º turno</th></tr></thead>
+    <tbody>
+      {% for nome in DIAS_SEMANA %}
+      {% set dia = loop.index0 %}
+      <tr>
+        <th scope="row">{{ nome }}</th>
+        {% for turno in [1, 2] %}
+        <td>
+          <span class="intervalo">
+            <input type="time" name="h{{ dia }}_{{ turno }}_ini" value="{{ form['h%d_%d_ini' % (dia, turno)] }}" step="300" aria-label="{{ nome }}, {{ turno }}º turno, início">
+            <span>às</span>
+            <input type="time" name="h{{ dia }}_{{ turno }}_fim" value="{{ form['h%d_%d_fim' % (dia, turno)] }}" step="300" aria-label="{{ nome }}, {{ turno }}º turno, fim">
+          </span>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="discreto pequeno">Deixe em branco os dias sem atendimento. Ex.: 1º turno 08:00 às 12:00, 2º turno 13:30 às 18:00.</p>
+  <div class="botoes">
+    <button class="botao botao-primario" type="submit">Salvar horários</button>
+  </div>
+</form>
+<p class="pequeno">Link para os pacientes agendarem:
+  <a href="{{ url_for('agendar', prof=prof.id, _external=True) }}" target="_blank" rel="noopener">{{ url_for('agendar', prof=prof.id, _external=True) }}</a>
+  (só desta profissional) ou <a href="{{ url_for('agendar', _external=True) }}" target="_blank" rel="noopener">{{ url_for('agendar', _external=True) }}</a> (todas).</p>
+{% endif %}
+{% endblock %}

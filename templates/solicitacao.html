@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block titulo %}Solicitação de {{ s.paciente_nome }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div>
+    <p class="pequeno"><a href="{{ url_for('solicitacoes') }}">← Solicitações</a></p>
+    <h1>{{ s.paciente_nome }}</h1>
+    <p class="discreto">
+      {% if s.especialidade_nome %}<strong>{{ s.especialidade_nome }}</strong> · {% endif %}
+      {{ 'Primeira consulta (avaliação)' if s.tipo == 'avaliacao' else 'Diz já ser paciente' }} ·
+      {{ s.inicio | dia_semana }}, {{ s.inicio | datahora_br }}–{{ s.fim | hora }} com {{ s.profissional_nome }}
+    </p>
+  </div>
+  <div>
+    {% if s.status == 'pendente' and passou %}<span class="selo">Expirada</span>
+    {% else %}<span class="selo selo-sol-{{ s.status }}">{{ STATUS_SOLICITACAO[s.status] }}</span>{% endif %}
+  </div>
+</div>
+
+<div class="colunas-hoje">
+  <div>
+    <section class="cartao">
+      <h2>Dados enviados</h2>
+      <dl class="dados">
+        <dt>Paciente</dt><dd>{{ s.paciente_nome }}</dd>
+        <dt>Nascimento</dt><dd>{% if s.data_nascimento %}{{ s.data_nascimento | data_br }} ({{ s.data_nascimento | idade }}){% else %}—{% endif %}</dd>
+        <dt>Responsável</dt><dd>{{ s.responsavel_nome or '—' }}</dd>
+        <dt>WhatsApp</dt><dd>{{ s.telefone | telefone }}{% set wpp = link_whatsapp(s.telefone) %}{% if wpp %} · <a href="{{ wpp }}" target="_blank" rel="noopener">abrir conversa</a>{% endif %}</dd>
+        <dt>E-mail</dt><dd>{{ s.email or '—' }}</dd>
+        <dt>Atendimento</dt><dd>{% if s.convenio_nome %}<span class="selo selo-plano">{{ s.convenio_nome }}</span>
+          {% if s.carteirinha %}carteirinha nº {{ s.carteirinha }}{% else %}<span class="texto-alerta">sem nº de carteirinha</span>{% endif %}
+          {% else %}Particular{% endif %}</dd>
+        <dt>Enviado em</dt><dd>{{ s.criado_em | datahora_br }}</dd>
+      </dl>
+      {% if s.motivo %}<h3>Motivo informado</h3><p class="observacao">{{ s.motivo }}</p>{% endif %}
+      <p class="discreto pequeno">Consentimento para uso dos dados registrado em {{ s.consentimento_em | datahora_br }}.</p>
+    </section>
+  </div>
+
+  <aside class="lateral">
+    {% if s.status == 'pendente' and not passou %}
+    <section class="painel">
+      <h2>Confirmar horário</h2>
+      <form method="post" action="{{ url_for('solicitacao_aprovar', solicitacao_id=s.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <fieldset class="lista-escolha">
+          <legend class="pequeno">Vincular a qual paciente?</legend>
+          {% for p in parecidos %}
+          <label class="check">
+            <input type="radio" name="paciente_id" value="{{ p.id }}" required {{ 'checked' if loop.first and s.tipo == 'terapia' }}>
+            <span>{{ p.nome }}{% if not p.ativo %} <small>(inativo)</small>{% endif %}<br>
+              <small class="discreto">{% if p.data_nascimento %}{{ p.data_nascimento | data_br }} · {% endif %}{{ p.responsavel_telefone or p.telefone or '' }}</small></span>
+          </label>
+          {% endfor %}
+          <label class="check">
+            <input type="radio" name="paciente_id" value="novo" required {{ 'checked' if not parecidos or s.tipo == 'avaliacao' }}>
+            <span>Cadastrar novo paciente com estes dados</span>
+          </label>
+        </fieldset>
+        {% if parecidos %}<p class="discreto pequeno">Encontramos cadastros com nome ou telefone parecidos. Confira antes de criar um novo.</p>{% endif %}
+        <button class="botao botao-primario largo" type="submit">Confirmar e lançar na agenda</button>
+      </form>
+    </section>
+
+    <section class="painel">
+      <h2>Recusar</h2>
+      <form method="post" action="{{ url_for('solicitacao_recusar', solicitacao_id=s.id) }}"
+            data-confirmar="Recusar o pedido de {{ s.paciente_nome }} e liberar o horário?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Mensagem ao paciente <small>(opcional, aparece na página dele)</small>
+          <textarea name="resposta" rows="2" maxlength="300" placeholder="Ex.: a profissional estará em curso nesse dia."></textarea>
+        </label>
+        <button class="botao largo" type="submit">Recusar e liberar horário</button>
+      </form>
+    </section>
+    {% else %}
+    <section class="painel">
+      <h2>Resposta</h2>
+      {% if s.respondido_em %}<p class="discreto">Respondida em {{ s.respondido_em | datahora_br }}.</p>{% endif %}
+      {% if s.resposta %}<p class="observacao">{{ s.resposta }}</p>{% endif %}
+      {% if link_resposta %}
+      <p><a class="botao botao-primario largo" href="{{ link_resposta }}" target="_blank" rel="noopener">Avisar no WhatsApp</a></p>
+      {% endif %}
+      {% if s.agendamento_id %}
+      <p><a href="{{ url_for('agendamento_editar', agendamento_id=s.agendamento_id) }}">Ver na agenda</a></p>
+      {% endif %}
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

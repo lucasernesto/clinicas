@@ -1,0 +1,64 @@
+{% macro selo_status(status) -%}
+<span class="selo selo-{{ status }}">{{ STATUS[status] }}</span>
+{%- endmacro %}
+
+{# Cartão de um agendamento com troca rápida de status e atalhos. #}
+{% macro cartao_agendamento(a, voltar, mostrar_data=false, mostrar_paciente=true, mostrar_prof=true, compacto=false) %}
+<article class="agendamento {{ 'compacto' if compacto }} st-{{ a.status }}" style="--cor-prof: {{ a.profissional_cor }}">
+  <div class="ag-linha">
+    <span class="ag-hora">
+      {% if mostrar_data %}{{ a.inicio | data_br }} · {% endif %}{{ a.inicio | hora }}–{{ a.fim | hora }}
+    </span>
+    <span class="selos">
+      {% if a.convenio_nome %}<span class="selo selo-plano" title="Atendimento pelo plano">{{ a.convenio_nome }}</span>{% endif %}
+      {{ selo_status(a.status) }}
+    </span>
+  </div>
+  {% if mostrar_paciente %}
+  <a class="ag-paciente" href="{{ url_for('paciente', paciente_id=a.paciente_id) }}">{{ a.paciente_nome }}</a>
+  {% endif %}
+  <div class="ag-detalhe">
+    {% if a.especialidade_nome %}<span class="ag-area">{{ a.especialidade_nome }}</span> · {% endif %}{{ TIPOS[a.tipo] }}{% if mostrar_prof %} · {{ a.profissional_nome }}{% endif %}
+    {% if a.observacao %}<span class="ag-obs" title="{{ a.observacao }}">· {{ a.observacao }}</span>{% endif %}
+  </div>
+  <div class="ag-acoes">
+    <form method="post" action="{{ url_for('agendamento_status', agendamento_id=a.id) }}" class="form-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="voltar" value="{{ voltar }}">
+      <label class="oculto" for="st-{{ a.id }}">Status</label>
+      <select id="st-{{ a.id }}" name="status" data-autoenviar>
+        {% for chave, rotulo in STATUS.items() %}
+        <option value="{{ chave }}" {{ 'selected' if chave == a.status }}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+      <button class="botao botao-pequeno" type="submit" data-sem-js>OK</button>
+    </form>
+    <a class="acao" href="{{ url_for('agendamento_editar', agendamento_id=a.id, voltar=voltar) }}">Editar</a>
+    {% if a.status == 'agendado' %}
+      {% set wpp = link_confirmacao(a) %}
+      {% if wpp %}<a class="acao acao-wpp" href="{{ wpp }}" target="_blank" rel="noopener">Confirmar no WhatsApp</a>{% endif %}
+    {% endif %}
+    {% if a.status == 'realizado' and pode_prontuario() %}
+      {% if a.evolucao_id %}
+      <a class="acao" href="{{ url_for('paciente', paciente_id=a.paciente_id, aba='prontuario') }}#evolucao-{{ a.evolucao_id }}">Ver evolução</a>
+      {% else %}
+      <a class="acao acao-destaque" href="{{ url_for('paciente', paciente_id=a.paciente_id, aba='prontuario', agendamento=a.id) }}#nova-evolucao">Registrar evolução</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</article>
+{% endmacro %}
+
+{% macro filtro_profissional(profissionais, prof_id, endpoint, extra={}) %}
+<form method="get" action="{{ url_for(endpoint) }}" class="filtro-prof">
+  {% for k, v in extra.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+  <label for="filtro-prof">Profissional</label>
+  <select id="filtro-prof" name="prof" data-autoenviar>
+    <option value="todos">Todos</option>
+    {% for p in profissionais %}
+    <option value="{{ p.id }}" {{ 'selected' if p.id == prof_id }}>{{ p.nome }}{% if p.especialidades_txt %} ({{ p.especialidades_txt }}){% endif %}</option>
+    {% endfor %}
+  </select>
+  <button class="botao botao-pequeno" type="submit" data-sem-js>Filtrar</button>
+</form>
+{% endmacro %}

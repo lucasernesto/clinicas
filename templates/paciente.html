@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cartao_agendamento, selo_status %}
+{% block titulo %}{{ paciente.nome }}{% endblock %}
+{% block conteudo %}
+{% set p = paciente %}
+{% set voltar = request.full_path.rstrip('?') %}
+<div class="cabecalho">
+  <div>
+    <h1>{{ p.nome }} {% if not p.ativo %}<span class="selo selo-cancelado">Inativo</span>{% endif %}</h1>
+    <p class="discreto">
+      {% if p.data_nascimento %}{{ p.data_nascimento | idade }} ({{ p.data_nascimento | data_br }}){% endif %}
+      {% if p.responsavel_nome %} · Resp.: {{ p.responsavel_nome }}{% if p.responsavel_parentesco %} ({{ p.responsavel_parentesco }}){% endif %}{% endif %}
+      {% if p.profissional_nome %} · Referência: {{ p.profissional_nome }}{% endif %}
+      · {{ p.convenio_nome or 'Particular' }}
+    </p>
+    {% if areas %}
+    <p class="areas">{% for a in areas %}<span class="selo selo-area">{{ a }}</span>{% endfor %}</p>
+    {% endif %}
+  </div>
+  <div class="cabecalho-acoes">
+    {% set wpp = link_whatsapp(p.responsavel_telefone or p.telefone) %}
+    {% if wpp %}<a class="botao" href="{{ wpp }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}
+    <a class="botao" href="{{ url_for('paciente_editar', paciente_id=p.id) }}">Editar cadastro</a>
+    <a class="botao botao-primario" href="{{ url_for('agendamento_novo', paciente=p.id) }}">+ Agendar</a>
+  </div>
+</div>
+
+<nav class="abas">
+  <a href="{{ url_for('paciente', paciente_id=p.id) }}" class="{{ 'ativo' if aba == 'resumo' }}">Resumo</a>
+  <a href="{{ url_for('paciente', paciente_id=p.id, aba='agenda') }}" class="{{ 'ativo' if aba == 'agenda' }}">Sessões</a>
+  {% if pode_prontuario() %}
+  <a href="{{ url_for('paciente', paciente_id=p.id, aba='prontuario') }}" class="{{ 'ativo' if aba == 'prontuario' }}">Prontuário</a>
+  {% endif %}
+  <a href="{{ url_for('paciente', paciente_id=p.id, aba='financeiro') }}" class="{{ 'ativo' if aba == 'financeiro' }}">
+    Financeiro {% if saldo < 0 %}<span class="selo selo-falta">{{ (-saldo) | brl }}</span>{% endif %}
+  </a>
+</nav>
+
+{# ------------------------------------------------------------ resumo #}
+{% if aba == 'resumo' %}
+<div class="colunas-hoje">
+  <div>
+    <section class="cartao">
+      <h2>Cadastro</h2>
+      <dl class="dados">
+        <dt>Telefone</dt><dd>{{ p.telefone or '—' }}</dd>
+        <dt>E-mail</dt><dd>{{ p.email or '—' }}</dd>
+        <dt>CPF</dt><dd>{{ p.cpf or '—' }}</dd>
+        <dt>Endereço</dt><dd>{{ p.endereco or '—' }}</dd>
+        <dt>Responsável</dt><dd>{{ p.responsavel_nome or '—' }}{% if p.responsavel_telefone %} · {{ p.responsavel_telefone }}{% endif %}</dd>
+        <dt>Plano de saúde</dt><dd>{{ p.convenio_nome or 'Particular' }}{% if p.carteirinha %} · nº {{ p.carteirinha }}{% elif p.convenio_id %} · <span class="texto-alerta">sem nº de carteirinha</span>{% endif %}</dd>
+        <dt>Sessão particular</dt><dd>{{ p.valor_sessao_centavos | brl }}</dd>
+        <dt>Cadastrado em</dt><dd>{{ p.criado_em | data_br }}</dd>
+      </dl>
+      {% if p.observacoes %}<p class="observacao">{{ p.observacoes }}</p>{% endif %}
+    </section>
+
+    {% if pode_prontuario() and (p.queixa_principal or p.hipotese_diagnostica) %}
+    <section class="cartao campo-clinico">
+      <h2>Clínico</h2>
+      {% if p.queixa_principal %}<h3>Queixa principal</h3><p class="texto-livre">{{ p.queixa_principal }}</p>{% endif %}
+      {% if p.hipotese_diagnostica %}<h3>Hipótese diagnóstica</h3><p>{{ p.hipotese_diagnostica }}</p>{% endif %}
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="lateral">
+    <section class="painel">
+      <h2>Próximas sessões</h2>
+      {% for a in proximas %}
+        {{ cartao_agendamento(a, voltar, mostrar_data=true, mostrar_paciente=false, compacto=true) }}
+      {% else %}
+        <p class="vazio">Nenhuma sessão futura. <a href="{{ url_for('agendamento_novo', paciente=p.id) }}">Agendar</a></p>
+      {% endfor %}
+    </section>
+    <section class="painel">
+      <h2>Frequência</h2>
+      {% set realizadas = frequencia.get('realizado', 0) %}
+      {% set faltas = frequencia.get('falta', 0) + frequencia.get('falta_justificada', 0) %}
+      <dl class="dados">
+        <dt>Realizadas</dt><dd>{{ realizadas }}</dd>
+        <dt>Faltas</dt><dd>{{ frequencia.get('falta', 0) }}</dd>
+        <dt>Faltas justificadas</dt><dd>{{ frequencia.get('falta_justificada', 0) }}</dd>
+        <dt>Canceladas</dt><dd>{{ frequencia.get('cancelado', 0) }}</dd>
+        {% if realizadas + faltas %}
+        <dt>Assiduidade</dt><dd><strong>{{ (100 * realizadas / (realizadas + faltas)) | round | int }}%</strong></dd>
+        {% endif %}
+      </dl>
+    </section>
+    <section class="painel">
+      <h2>Saldo</h2>
+      <p class="saldo {{ 'negativo' if saldo < 0 else 'positivo' if saldo > 0 }}">
+        {% if saldo < 0 %}Em aberto: {{ (-saldo) | brl }}{% elif saldo > 0 %}Crédito: {{ saldo | brl }}{% else %}Em dia{% endif %}
+      </p>
+      <a href="{{ url_for('paciente', paciente_id=p.id, aba='financeiro') }}">Ver extrato</a>
+    </section>
+  </aside>
+</div>
+
+{# ------------------------------------------------------------ sessões #}
+{% elif aba == 'agenda' %}
+<div class="cartao sem-padding">
+  <table class="tabela">
+    <thead><tr><th>Data</th><th>Horário</th><th>Atendimento</th><th>Profissional</th><th>Status</th><th>Valor</th><th></th></tr></thead>
+    <tbody>
+      {% for a in historico %}
+      <tr class="{{ 'riscado' if a.status == 'cancelado' }}">
+        <td>{{ (a.inicio | dia_semana)[:3] }} {{ a.inicio | data_br }}</td>
+        <td>{{ a.inicio | hora }}–{{ a.fim | hora }}</td>
+        <td>{% if a.especialidade_nome %}{{ a.especialidade_nome }} · {% endif %}{{ TIPOS[a.tipo] }}
+          {% if a.convenio_nome %}<span class="selo selo-plano">{{ a.convenio_nome }}</span>{% endif %}</td>
+        <td>{{ a.profissional_nome }}</td>
+        <td>{{ selo_status(a.status) }}</td>
+        <td>{{ a.valor_centavos | brl }}</td>
+        <td><a href="{{ url_for('agendamento_editar', agendamento_id=a.id, voltar=voltar) }}">Editar</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="vazio">Nenhuma sessão registrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ------------------------------------------------------------ prontuário #}
+{% elif aba == 'prontuario' %}
+<div class="barra-acoes">
+  <a class="botao" href="{{ url_for('prontuario_impressao', paciente_id=p.id) }}" target="_blank">Imprimir prontuário</a>
+</div>
+
+{% if p.queixa_principal or p.hipotese_diagnostica or p.anamnese %}
+<details class="cartao campo-clinico" {{ 'open' if not evolucoes }}>
+  <summary><strong>Queixa, hipótese e anamnese</strong></summary>
+  {% if p.queixa_principal %}<h3>Queixa principal</h3><p class="texto-livre">{{ p.queixa_principal }}</p>{% endif %}
+  {% if p.hipotese_diagnostica %}<h3>Hipótese diagnóstica</h3><p>{{ p.hipotese_diagnostica }}</p>{% endif %}
+  {% if p.anamnese %}<h3>Anamnese</h3><p class="texto-livre">{{ p.anamnese }}</p>{% endif %}
+  <p><a href="{{ url_for('paciente_editar', paciente_id=p.id) }}">Editar dados clínicos</a></p>
+</details>
+{% else %}
+<p class="aviso aviso-info">A anamnese ainda não foi preenchida. <a href="{{ url_for('paciente_editar', paciente_id=p.id) }}">Preencher agora</a></p>
+{% endif %}
+
+<section class="cartao" id="nova-evolucao">
+  <h2>Nova evolução</h2>
+  <form method="post" action="{{ url_for('evolucao_nova', paciente_id=p.id) }}" class="grade-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% set escolhido = rascunho.agendamento_id or agendamento_escolhido %}
+    <label class="col-2">Sessão
+      <select name="agendamento_id">
+        <option value="">Sem vínculo com a agenda (informar data)</option>
+        {% for a in sessoes_sem_evolucao %}
+        <option value="{{ a.id }}" {{ 'selected' if escolhido == a.id|string or (not escolhido and loop.first) }}>
+          {{ a.inicio | datahora_br }} · {{ a.especialidade_nome or TIPOS[a.tipo] }} · {{ a.profissional_nome }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Data (se sem vínculo)
+      <input type="date" name="data" value="{{ rascunho.data or hoje }}" max="{{ hoje }}">
+    </label>
+    <label class="col-total">Registro
+      <textarea name="texto" rows="9" maxlength="20000" required
+        placeholder="Objetivos trabalhados:&#10;Procedimentos / atividades:&#10;Resposta do paciente:&#10;Orientações à família / tarefa para casa:&#10;Plano para a próxima sessão:">{{ rascunho.texto }}</textarea>
+    </label>
+    <label class="check col-total">
+      <input type="checkbox" name="sigilosa" value="1" {{ 'checked' if rascunho.sigilosa }}>
+      <span>Registro sigiloso <small class="discreto">— os outros profissionais veem que houve atendimento, mas não o conteúdo</small></span>
+    </label>
+    <div class="col-total botoes">
+      <button class="botao botao-primario" type="submit">Registrar evolução</button>
+      <small class="discreto">Assinada por {{ g.usuario.nome }}{% if g.usuario.registro %} — {{ g.usuario.registro }}{% endif %}. Só você poderá editar.</small>
+    </div>
+  </form>
+</section>
+
+<section>
+  <h2>Evoluções <span class="contador">{{ evolucoes | length }}</span></h2>
+  {% for e in evolucoes %}
+  <article class="evolucao cartao" id="evolucao-{{ e.id }}">
+    <header>
+      <strong>{{ e.data | data_br }}</strong>
+      {% if e.especialidade_nome %}<span class="selo selo-area">{{ e.especialidade_nome }}</span>{% endif %}
+      {% if e.tipo %}<span class="discreto">· {{ TIPOS[e.tipo] }}</span>{% endif %}
+      <span class="discreto">· {{ e.profissional_nome }}{% if e.registro %} ({{ e.registro }}){% endif %}</span>
+      {% if e.sigilosa %}<span class="selo selo-sigilo">Sigiloso</span>{% endif %}
+      {% if e.profissional_id == g.usuario.id %}
+      <a class="acao" href="{{ url_for('evolucao_editar', evolucao_id=e.id) }}">Editar</a>
+      {% endif %}
+    </header>
+    {% if e.restrita %}
+    <p class="discreto"><em>Registro sigiloso. Só {{ e.profissional_nome }} tem acesso ao conteúdo.</em></p>
+    {% else %}
+    <div class="texto-livre">{{ e.texto }}</div>
+    {% endif %}
+    <footer class="discreto pequeno">
+      Registrada em {{ e.criado_em | datahora_br }}{% if e.editado_em %} · editada em {{ e.editado_em | datahora_br }}{% endif %}
+    </footer>
+  </article>
+  {% else %}
+  <p class="vazio">Nenhuma evolução registrada ainda.</p>
+  {% endfor %}
+</section>
+
+{# ------------------------------------------------------------ financeiro #}
+{% elif aba == 'financeiro' %}
+<div class="resumo-numeros">
+  <div><span>Cobrado</span><strong>{{ cobrado | brl }}</strong></div>
+  <div><span>Pago</span><strong>{{ pago | brl }}</strong></div>
+  <div class="{{ 'negativo' if saldo < 0 else 'positivo' if saldo > 0 }}">
+    <span>{{ 'Em aberto' if saldo < 0 else 'Crédito' if saldo > 0 else 'Saldo' }}</span>
+    <strong>{{ (saldo | abs) | brl }}</strong>
+  </div>
+</div>
+<p class="discreto pequeno">
+  Entram na cobrança do paciente as sessões particulares realizadas{% if COBRAR_FALTA %} e as faltas sem justificativa{% endif %}, pelo valor de cada agendamento.
+  Sessões pelo plano são cobradas do convênio e aparecem mais abaixo.
+</p>
+
+<section class="cartao">
+  <h2>Registrar pagamento</h2>
+  <form method="post" action="{{ url_for('pagamento_novo', paciente_id=p.id) }}" class="grade-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Valor (R$)
+      <input name="valor" inputmode="decimal" required placeholder="{{ ((-saldo) if saldo < 0 else p.valor_sessao_centavos) | centavos_form }}">
+    </label>
+    <label>Data
+      <input type="date" name="data" value="{{ hoje }}" max="{{ hoje }}" required>
+    </label>
+    <label>Forma
+      <select name="forma" required>
+        {% for chave, rotulo in FORMAS.items() %}
+        <option value="{{ chave }}">{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Descrição
+      <input name="descricao" maxlength="200" placeholder="Ex.: pacote de outubro">
+    </label>
+    <div class="col-total botoes">
+      <button class="botao botao-primario" type="submit">Registrar</button>
+    </div>
+  </form>
+</section>
+
+<div class="colunas-iguais">
+  <section class="cartao sem-padding">
+    <h2 class="titulo-tabela">Sessões particulares cobradas</h2>
+    <table class="tabela">
+      <thead><tr><th>Data</th><th>Sessão</th><th class="num">Valor</th></tr></thead>
+      <tbody>
+        {% for a in cobrancas %}
+        <tr>
+          <td>{{ a.inicio | datahora_br }}</td>
+          <td>{{ a.especialidade_nome or TIPOS[a.tipo] }} {% if a.status == 'falta' %}{{ selo_status('falta') }}{% endif %}</td>
+          <td class="num">{{ a.valor_centavos | brl }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="vazio">Nenhuma sessão cobrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <section class="cartao sem-padding">
+    <h2 class="titulo-tabela">Pagamentos</h2>
+    <table class="tabela">
+      <thead><tr><th>Data</th><th>Forma</th><th class="num">Valor</th>{% if g.usuario.papel == 'admin' %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for x in pagamentos %}
+        <tr>
+          <td>{{ x.data | data_br }}</td>
+          <td>{{ ROTULO_FORMAS.get(x.forma, x.forma) }}{% if x.descricao %}<br><small class="discreto">{{ x.descricao }}</small>{% endif %}</td>
+          <td class="num">{{ x.valor_centavos | brl }}</td>
+          {% if g.usuario.papel == 'admin' %}
+          <td>
+            <form method="post" action="{{ url_for('pagamento_excluir', pagamento_id=x.id) }}"
+                  data-confirmar="Excluir o pagamento de {{ x.valor_centavos | brl }} de {{ x.data | data_br }}?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="botao-link perigo" type="submit">Excluir</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="vazio">Nenhum pagamento registrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+{% if sessoes_plano %}
+<section class="cartao sem-padding">
+  <h2 class="titulo-tabela">Sessões pelo plano</h2>
+  <table class="tabela">
+    <thead><tr><th>Data</th><th>Plano</th><th>Sessão</th><th>Guia</th><th>Faturamento</th><th class="num">Valor</th></tr></thead>
+    <tbody>
+      {% for a in sessoes_plano %}
+      <tr>
+        <td>{{ a.inicio | datahora_br }}</td>
+        <td>{{ a.convenio_nome }}</td>
+        <td>{{ a.especialidade_nome or TIPOS[a.tipo] }}</td>
+        <td>{{ a.guia or '—' }}</td>
+        <td><span class="selo selo-fat-{{ a.faturamento or 'a_faturar' }}">{{ FATURAMENTO[a.faturamento or ''] }}</span></td>
+        <td class="num">{{ a.valor_centavos | brl }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

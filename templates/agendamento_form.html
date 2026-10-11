@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar agendamento' if agendamento else 'Novo agendamento' }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>{{ 'Editar agendamento' if agendamento else 'Novo agendamento' }}</h1>
+</div>
+
+<div class="cartao">
+  {% if agendamento %}
+  <p>
+    <a href="{{ url_for('paciente', paciente_id=agendamento.paciente_id) }}"><strong>{{ agendamento.paciente_nome }}</strong></a>
+    · <span class="selo selo-{{ agendamento.status }}">{{ STATUS[agendamento.status] }}</span>
+    {% if agendamento.serie %}<span class="discreto">· faz parte de uma série semanal</span>{% endif %}
+  </p>
+  {% endif %}
+  <form method="post" class="grade-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="voltar" value="{{ form.voltar }}">
+
+    {% if not agendamento %}
+    <label class="col-2">Paciente
+      <select name="paciente_id" required>
+        <option value="">Escolha…</option>
+        {% for p in pacientes %}
+        <option value="{{ p.id }}" {{ 'selected' if form.paciente_id == p.id|string }}>{{ p.nome }}</option>
+        {% endfor %}
+      </select>
+      <small><a href="{{ url_for('paciente_novo') }}">Cadastrar paciente novo</a></small>
+    </label>
+    {% endif %}
+
+    <label class="col-2">Especialidade e profissional
+      <select name="atendimento" required>
+        <option value="">Escolha…</option>
+        {% for area, lista in atendimentos.items() %}
+        <optgroup label="{{ area }}">
+          {% for a in lista %}
+          {% set chave = a.profissional_id ~ ':' ~ (a.especialidade_id or '') %}
+          <option value="{{ chave }}" {{ 'selected' if form.atendimento == chave }}>{{ a.profissional_nome }} — {{ area }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>Data
+      <input type="date" name="data" value="{{ form.data }}" required>
+    </label>
+    <label>Horário
+      <input type="time" name="hora" value="{{ form.hora }}" required step="300">
+    </label>
+    <label>Duração
+      <select name="duracao">
+        {% for d in DURACOES %}
+        <option value="{{ d }}" {{ 'selected' if form.duracao == d|string }}>{{ d }} min</option>
+        {% endfor %}
+        {% if form.duracao and form.duracao|int not in DURACOES %}
+        <option value="{{ form.duracao }}" selected>{{ form.duracao }} min</option>
+        {% endif %}
+      </select>
+    </label>
+    <label>Tipo
+      <select name="tipo">
+        {% for chave, rotulo in TIPOS.items() %}
+        <option value="{{ chave }}" {{ 'selected' if form.tipo == chave }}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>Particular ou plano
+      <select name="cobranca">
+        {% if not agendamento %}<option value="" {{ 'selected' if not form.cobranca }}>Conforme o cadastro do paciente</option>{% endif %}
+        <option value="particular" {{ 'selected' if form.cobranca == 'particular' }}>Particular</option>
+        {% for c in listar_convenios() %}
+        <option value="{{ c.id }}" {{ 'selected' if form.cobranca == c.id|string }}>{{ c.nome }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Nº da guia / autorização
+      <input name="guia" value="{{ form.guia }}" maxlength="40" placeholder="só para plano">
+    </label>
+
+    <label>Valor (R$)
+      <input name="valor" value="{{ form.valor }}" inputmode="decimal" placeholder="automático">
+      <small>Em branco: valor que o plano paga ou, se particular, o valor de sessão do paciente.</small>
+    </label>
+
+    {% if not agendamento %}
+    <label>Repetir toda semana
+      <select name="semanas">
+        <option value="1">Não repetir</option>
+        {% for n in [4, 8, 12, 16, 24, 52] %}
+        <option value="{{ n }}" {{ 'selected' if form.semanas == n|string }}>Por {{ n }} semanas</option>
+        {% endfor %}
+      </select>
+      <small>Horários ocupados são pulados e avisados.</small>
+    </label>
+    {% endif %}
+
+    <label class="col-total">Observação
+      <input name="observacao" value="{{ form.observacao }}" maxlength="500" placeholder="Ex.: trazer exame de audiometria">
+    </label>
+
+    <div class="col-total botoes">
+      <button class="botao botao-primario" type="submit">{{ 'Salvar' if agendamento else 'Agendar' }}</button>
+      <a class="botao" href="{{ form.voltar or url_for('agenda') }}">Voltar</a>
+    </div>
+  </form>
+</div>
+
+{% if agendamento and serie_futura %}
+<div class="cartao cartao-perigo">
+  <h2>Série semanal</h2>
+  <p>Há {{ serie_futura }} sessões desta série ainda não realizadas a partir de {{ agendamento.inicio | data_br }} (inclusive).</p>
+  <form method="post" action="{{ url_for('agendamento_cancelar_serie', agendamento_id=agendamento.id) }}"
+        data-confirmar="Cancelar {{ serie_futura }} sessões de {{ agendamento.paciente_nome }}?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="botao botao-perigo" type="submit">Cancelar esta e as próximas</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}
