@@ -2249,4 +2249,8 @@ def proibido(e):
 init_db()
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "5001")), debug=os.environ.get("FLASK_DEBUG") == "1")
+    # CLINICA_HOST=0.0.0.0 libera o acesso por outros computadores e celulares da mesma rede.
+    host = os.environ.get("CLINICA_HOST", "127.0.0.1")
+    porta = int(os.environ.get("PORT", "5001"))
+    print(f"\n  Equipe:    http://127.0.0.1:{porta}\n  Pacientes: http://127.0.0.1:{porta}/agendar\n")
+    app.run(host=host, port=porta, debug=os.environ.get("FLASK_DEBUG") == "1")

@@ -13,23 +13,62 @@ Sistema da clínica (fonoaudiologia, psicologia, psicomotricidade, nutrição e 
 - **Planos de saúde**: Assim, Klini e Appai, com as especialidades que cada um cobre e o valor pago por sessão. Cada sessão é particular ou pelo plano, com nº da guia. A tela **Convênios** controla o faturamento das sessões pelo plano: a faturar → faturado → pago ou glosado.
 - **Usuários e especialidades**: contas individuais com papel (administração, profissional de saúde, recepção) e as especialidades de cada profissional.
 
-Feito em Python com Flask e SQLite, no mesmo estilo da mercearia: HTML, CSS e um pouco de JavaScript, sem build.
+Feito em Python com Flask e SQLite: HTML, CSS e um pouco de JavaScript, sem build. O banco é um arquivo só, criado na primeira execução.
 
-## Como rodar
+## Como rodar em uma máquina nova
+
+Você precisa do [Git](https://git-scm.com/downloads) e do [Python 3.10 ou mais novo](https://www.python.org/downloads/). No Windows, marque **"Add python.exe to PATH"** ao instalar o Python.
+
+```bash
+git clone git@github.com:lucasernesto/clinicas.git
+cd clinicas
+```
+
+Depois é um comando só. Na primeira vez ele cria o ambiente virtual (`.venv`) e instala as dependências; nas próximas, só inicia.
+
+**Windows** (ou dois cliques no arquivo `iniciar.bat`):
+
+```bat
+iniciar.bat
+```
+
+**Linux / macOS:**
+
+```bash
+./iniciar.sh
+```
+
+Abra http://127.0.0.1:5001 para a equipe e http://127.0.0.1:5001/agendar para a página dos pacientes. Para parar, feche a janela ou aperte `Ctrl+C`.
+
+Na primeira execução é criado o banco `instance/clinica.db`, as cinco especialidades, os planos Assim, Klini e Appai e o usuário `admin@clinica.local` com senha `admin123`, que precisa ser trocada no primeiro acesso.
+
+O banco **não vai para o Git** (está no `.gitignore`), porque guarda dados de pacientes. Cada máquina começa com o seu. Para levar os dados de uma máquina para outra, copie a pasta `instance/` com o sistema parado.
+
+### Sem os scripts
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```
 
-Abra http://127.0.0.1:5001 para a equipe e http://127.0.0.1:5001/agendar para a página dos pacientes. Na primeira execução é criado o banco `instance/clinica.db`, as cinco especialidades e o usuário `admin@clinica.local` com senha `admin123`, que precisa ser trocada no primeiro acesso.
+### Acessar de outros computadores da clínica
+
+Por padrão o sistema só abre na própria máquina. Para a recepção ou um celular na mesma rede acessarem, inicie com `CLINICA_HOST=0.0.0.0` e use o IP da máquina (por exemplo `http://192.168.0.10:5001`):
+
+```powershell
+$env:CLINICA_HOST = "0.0.0.0"; .\iniciar.bat
+```
+
+O Windows pode pedir para liberar o Python no firewall. Isso serve para a rede interna; para pôr na internet, veja "Antes de usar de verdade".
 
 ### Dados de demonstração
 
-```powershell
-python demo.py
+Para experimentar com dados fictícios, inicie com `demo` (só funciona com o banco ainda sem pacientes):
+
+```bash
+iniciar.bat demo        # Linux/macOS: ./iniciar.sh demo
 ```
 
 Cria a equipe da clínica com horários de atendimento, uma recepcionista, oito pacientes fictícios e algumas semanas de sessões, evoluções e pagamentos:
@@ -90,6 +129,7 @@ Senha de todos: `demo1234`. Na demonstração, Helena é Klini, Laura é Appai e
 | `CLINICA_ANTECEDENCIA_HORAS` | `12` | Antecedência mínima para pedir horário online. |
 | `CLINICA_DIAS_ONLINE` | `21` | Até quantos dias à frente a página pública oferece horários. |
 | `CLINICA_SECRET_KEY` | gerada em `instance/secret_key` | Chave das sessões. |
+| `CLINICA_HOST` | `127.0.0.1` | `0.0.0.0` libera o acesso pela rede local. |
 | `PORT` | `5001` | Porta do servidor de desenvolvimento. |
 
 ## Estrutura
@@ -104,6 +144,7 @@ templates/          páginas da equipe (_macros.html tem o cartão de agendament
 templates/publico/  páginas do agendamento online
 static/style.css    visual
 static/app.js       envio automático dos filtros, confirmações e impressão
+iniciar.bat / .sh   prepara o ambiente e inicia o sistema
 ```
 
 ## Antes de usar de verdade
