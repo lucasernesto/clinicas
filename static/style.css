@@ -344,6 +344,20 @@ details.cartao summary { cursor: pointer; }
 .conteudo.publico { max-width: 760px; }
 .topo-publico .topo-dentro { justify-content: space-between; }
 .topo-contato { color: #fff; font-weight: 600; text-decoration: none; background: rgba(255,255,255,.15); padding: .35rem .8rem; border-radius: 99px; }
+.topo-acoes { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.topo-equipe {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  color: #fff;
+  text-decoration: none;
+  font-size: .9rem;
+  padding: .35rem .8rem;
+  border: 1px solid rgba(255,255,255,.45);
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.topo-equipe:hover, .topo-contato:hover { background: rgba(255,255,255,.22); }
 .intro-publica { margin: .5rem 0 1.2rem; }
 .passo {
   display: inline-grid;
