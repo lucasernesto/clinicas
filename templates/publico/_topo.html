@@ -6,8 +6,14 @@
       </span>
       {{ NOME_CLINICA }}
     </a>
-    {% if WHATSAPP_CLINICA and link_whatsapp(WHATSAPP_CLINICA) %}
-    <a class="topo-contato" href="{{ link_whatsapp(WHATSAPP_CLINICA) }}" target="_blank" rel="noopener">Falar com a clínica</a>
-    {% endif %}
+    <div class="topo-acoes">
+      {% if WHATSAPP_CLINICA and link_whatsapp(WHATSAPP_CLINICA) %}
+      <a class="topo-contato" href="{{ link_whatsapp(WHATSAPP_CLINICA) }}" target="_blank" rel="noopener">Falar com a clínica</a>
+      {% endif %}
+      <a class="topo-equipe" href="{{ url_for('login') }}">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Área da equipe
+      </a>
+    </div>
   </div>
 </header>
